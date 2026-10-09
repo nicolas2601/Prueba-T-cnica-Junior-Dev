@@ -15,7 +15,7 @@ const count = document.querySelector("#count");
 const errorBox = document.querySelector("#error");
 const money = new Intl.NumberFormat("es-CO", {style:"currency",currency:"COP",maximumFractionDigits:0});
 let loaded = false;
-// The alert region stays in the DOM; it is only visible while it has text, so screen readers announce changes.
+// The alert region stays in the DOM and is only visible while it has text, so assistive tech can detect changes.
 function showError(message) { errorBox.textContent = message; }
 function clearError() { errorBox.textContent = ""; }
 async function errorMessage(response) {
