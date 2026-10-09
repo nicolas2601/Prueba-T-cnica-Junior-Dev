@@ -22,18 +22,27 @@ def orders():
     except sqlite3.Error:
         return jsonify(error="No se pudieron cargar los pedidos."), 500
 
+SHIP_REJECTIONS = {
+    "enviado": "El pedido ya está enviado.",
+    "cancelado": "Un pedido cancelado no puede enviarse.",
+}
+
 @app.post("/api/orders/<int:order_id>/ship")
 def ship(order_id):
     try:
         with connect() as con:
+            # The status check lives in the UPDATE itself so it is atomic:
+            # only a pending order can ever become shipped.
+            shipped = con.execute(
+                "UPDATE orders SET status = 'enviado' WHERE id = ? AND status = 'pendiente'",
+                (order_id,),
+            ).rowcount
             row = con.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-            if row is None:
-                return jsonify(error="Pedido no encontrado."), 404
-            if row["status"] == "enviado":
-                return jsonify(error="El pedido ya está enviado."), 409
-            con.execute("UPDATE orders SET status = 'enviado' WHERE id = ?", (order_id,))
-            updated = con.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-        return jsonify(dict(updated))
+        if row is None:
+            return jsonify(error="Pedido no encontrado."), 404
+        if not shipped:
+            return jsonify(error=SHIP_REJECTIONS[row["status"]]), 409
+        return jsonify(dict(row))
     except sqlite3.Error:
         return jsonify(error="No se pudo actualizar el pedido."), 500
 
